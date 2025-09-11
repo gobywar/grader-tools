@@ -1,0 +1,26 @@
+# pyproject.toml
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grader_tools"
+version = "0.1.0"
+description = "Tools to manage criteria grids and exams"
+authors = [
+  { name = "Ton Nom", email = "toi@example.com" }
+]
+dependencies = [
+  "jinja2",
+  "pyyaml",
+  "typer[all]"
+]
+
+[project.scripts]
+grader-tools = "grader_tools.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+grader_tools = ["templates/*.typ", "templates/*.html", "templates/img/*.png"]

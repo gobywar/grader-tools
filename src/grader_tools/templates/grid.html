@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Grilles critériées - {{ course }} {{ semester }} {{ year }}</title>
+  <style>
+    :root {
+      --bg-color: white;
+      --text-color: #1e1e1e;
+      --muted-text: #555;
+      --card-bg: #ffffff;
+      --border-color: #e5e7eb;
+      --header-bg: #f3f4f6;
+      --inactive-bg: rgba(234, 95, 124, 0.5);
+      --inactive-text: #991b1b;
+    }
+  
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+                   "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 2rem auto;
+      max-width: 1200px;
+      line-height: 1.6;
+      background: var(--bg-color);
+      color: var(--text-color);
+    }
+  
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+  
+    header h1 {
+      font-size: 1.8rem;
+      font-weight: 600;
+      margin: 0;
+    }
+  
+    .authors {
+      font-style: italic;
+      font-size: 0.95rem;
+      color: var(--muted-text);
+      margin-top: 0.2rem;
+    }
+  
+    h2 {
+      margin-top: 2rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 1.3rem;
+      font-weight: 600;
+    }
+  
+    h3 {
+      margin-top: 1rem;
+      font-size: 1.1rem;
+      font-weight: 500;
+    }
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 1rem;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color); /* thicker outer border */
+        border-radius: 6px;
+        table-layout: fixed;
+        }
+  
+    th, td {
+      border: 1px solid var(--border-color);
+      padding: 0.75rem;
+      text-align: center;
+      font-size: 0.8rem;
+      word-wrap: break-word;
+    }
+  
+    thead th {
+      background: var(--header-bg);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+  
+    thead th:first-child {
+      width: 20%;
+    }
+  
+    thead th:not(:first-child) {
+      width: calc(80% / 6);
+    }
+  
+    td:first-child {
+      text-align: left;
+      font-weight: 500;
+      background: var(--header-bg);
+    }
+  
+    .inactive {
+      background: var(--inactive-bg);
+      color: var(--inactive-text);
+      font-style: italic;
+    }
+  
+    img {
+      height: 50px;
+    }
+  </style>  
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Grilles critériées – {{ course }} {{ semester }} {{ year }}</h1>
+      <div class="authors">Par {{ teachers }}</div>
+    </div>
+    <div>
+      {%if base64_img %}
+      <img src="data:image/png;base64,{{ base64_img }}" alt="Logo" style="height:50px;">
+      {% endif %}
+    </div>
+  </header>
+  {% set LEVELS_ORDER = ["Rédhibitoire", "Très insuffisant", "Insuffisant", "Passable", "Bien", "Au delà des attentes"] -%}
+  {% for outcome in outcomes %}
+    <h2>{{ outcome.name }}</h2>
+    <p><strong>Description :</strong> {{ outcome.text }}</p>
+    <h3>Liste des critères</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Critère</th>
+          {% for level_label in LEVELS_ORDER -%}
+          <th>{{ level_label }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for criterion in outcome.criteria %}
+          <tr>
+            <td>{{ criterion.name }} – {{ criterion.text }}</td>
+            {% for level_label in LEVELS_ORDER -%}
+              {% set lvl = (criterion.levels | selectattr("label", "equalto", level_label) | list | first) -%}
+              {% if lvl -%}
+                {% set r, g, b = lvl.color[1:3]|int(16), lvl.color[3:5]|int(16), lvl.color[5:7]|int(16) %}
+                <td style="background-color: {{ lvl.color }}">
+                {{ lvl.text }}
+                </td>
+              {% else %}
+                <td> </td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endfor %}
+</body>
+</html>
