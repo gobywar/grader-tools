@@ -41,9 +41,9 @@
     - *Date:* {{date}}
     - *Score:* {{ score| round(2) }}/{{ maxScore }} pts (class: average={{exam_stats.mean | round(2)}}, min={{exam_stats.min | round(2)}}, max={{exam_stats.max | round(2)}})
 
-    {% if feedback %}
+    {% if comment %}
     === Feedback
-    {{ feedback }}
+    {{ comment }}
     {% endif %}
 
     == Criterion Grid
@@ -72,9 +72,9 @@
 - *Criterion:* {{ question.criterion.id }}
 - *Enoncé:* `{{ question.text }}`
 - *Level:* {% if question.label %}{{ question.label }}{% else %}Not evaluated{% endif %}
-{% if question.feedback %}
+{% if question.comment %}
 - *Feedback:*
-{{ question.feedback }}
+{{ question.comment }}
 {% endif %}
 {% endfor %}
 {% endfor %}
