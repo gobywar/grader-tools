@@ -141,6 +141,18 @@ def preprocess_yaml(data):
                         "critical": level_info["critical"],
                     })
 
+            # add not answered 
+            normalized_levels.append({
+                        "id": f"{criterion_id}_l_na",
+                        "name": f"l_na",
+                        "order": -1,
+                        "weight": 0,
+                        "label": "Non traité",
+                        "text": "Non traité",
+                        "color": "#FFFFFF",
+                        "critical": False
+                    })
+
             criterion["id"] = criterion_id
             criterion["levels"] = normalized_levels
 
