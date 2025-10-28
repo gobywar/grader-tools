@@ -119,7 +119,6 @@
       {% endif %}
     </div>
   </header>
-  {% set LEVELS_ORDER = ["Rédhibitoire", "Très insuffisant", "Insuffisant", "Passable", "Bien", "Au delà des attentes"] -%}
   {% for outcome in outcomes %}
     <h2>{{ outcome.name }}</h2>
     <p><strong>Description :</strong> {{ outcome.text }}</p>
@@ -128,25 +127,22 @@
       <thead>
         <tr>
           <th>Critère</th>
-          {% for level_label in LEVELS_ORDER -%}
-          <th>{{ level_label }}</th>
-          {% endfor %}
+          {% if outcome.criteria|length > 0 %}
+            {% set first_criterion = outcome.criteria[0] %}
+            {% for lvl in first_criterion.levels %}
+              <th>{{ lvl.label }}</th>
+            {% endfor %}
+          {% endif %}
         </tr>
       </thead>
       <tbody>
         {% for criterion in outcome.criteria %}
           <tr>
             <td>{{ criterion.name }} – {{ criterion.text }}</td>
-            {% for level_label in LEVELS_ORDER -%}
-              {% set lvl = (criterion.levels | selectattr("label", "equalto", level_label) | list | first) -%}
-              {% if lvl -%}
-                {% set r, g, b = lvl.color[1:3]|int(16), lvl.color[3:5]|int(16), lvl.color[5:7]|int(16) %}
-                <td style="background-color: {{ lvl.color }}">
+            {% for lvl in criterion.levels %}
+              <td style="background-color: {{ lvl.color }}">
                 {{ lvl.text }}
-                </td>
-              {% else %}
-                <td> </td>
-              {% endif %}
+              </td>
             {% endfor %}
           </tr>
         {% endfor %}

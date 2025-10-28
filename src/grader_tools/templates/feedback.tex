@@ -1,0 +1,95 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{hyperref}
+\usepackage{amsmath, amssymb}
+\usepackage{xcolor}
+
+\geometry{margin=2.5cm}
+
+\begin{document}
+
+% ======= Header =======
+\noindent
+\begin{minipage}{0.7\textwidth}
+  \Large\textbf{Scoresheet for {{ student.firstName }} {{ student.lastName }}} \\[0.3em]
+  \normalsize
+  {{ exam.meta.semester }} -- {{ exam.meta.course }} \\[0.3em]
+  Date: {{ date }}
+\end{minipage}%
+\hfill
+\begin{minipage}{0.25\textwidth}
+  \raggedleft
+  {% if logo %}
+  \includegraphics[width=3cm]{ {{ logo }} }
+  {% endif %}
+\end{minipage}
+
+\vspace{1em}
+\hrule
+\vspace{1em}
+
+% ======= Global Score =======
+\noindent
+\textbf{Final Score:} {{ final_score | round(2) }}/{{ final_max_score }} pts \\
+\textbf{Exam Score:} {{ score | round(2) }}/{{ maxScore }} pts \\
+\textbf{Class Stats:} mean={{ exam_stats.mean | round(2) }}, min={{ exam_stats.min | round(2) }}, max={{ exam_stats.max | round(2) }}
+
+{% if comment %}
+\vspace{1em}
+\section*{Feedback}
+{{ comment }}
+{% endif %}
+
+% ======= Criterion Grid =======
+\section*{Criterion Grid}
+\renewcommand{\arraystretch}{1.3}
+\begin{longtable}{|p{2cm}|p{8cm}|c|c|}
+\hline
+\textbf{ID} & \textbf{Description} & \textbf{Score} & \textbf{Ratio (\%)} \\
+\hline
+{% for id_outcome, outcome in outcomes.items() %}
+  {% for id_criterion, criterion in outcome.criteria.items() %}
+    {% if criterion.maxScore > 0 %}
+      {{ criterion.id }} &
+      {{ criterion.text }} &
+      {{ criterion.score }}/{{ criterion.maxScore }} &
+      {{ (criterion.score / criterion.maxScore * 100) | round(1) }}\% \\
+      \hline
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+\end{longtable}
+
+% ======= Sections =======
+\section*{List of Sections}
+{% for section in sections %}
+\subsection*{Section {{ section.name }}: {{ section.text }} ({{ section.score }}/{{ section.maxScore }} pts)}
+
+{% for question in section.questions %}
+\subsubsection*{Question {{ question.name }} ({{ question.score }}/{{ question.maxScore }} pts)}
+
+\textbf{Criterion:} {{ question.criterion.id }}\\
+\textbf{Statement:}
+\begin{quote}
+{{ question.text }}
+\end{quote}
+
+\textbf{Level:} {% if question.label %}{{ question.label }}{% else %}Not evaluated{% endif %}
+
+{% if question.comment %}
+\\[0.5em]
+\textbf{Feedback:} {{ question.comment }}
+{% endif %}
+
+\vspace{1em}
+{% endfor %}
+{% endfor %}
+
+\end{document}

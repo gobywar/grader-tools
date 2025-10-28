@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from jinja2 import Template
 from .utils import extract_gradix
-
+import re
 
 def _load_template(name: str) -> str:
     with resources.files("grader_tools.templates").joinpath(name).open("r", encoding="utf-8") as f:
@@ -107,3 +107,77 @@ def render_gradix_to_pdf(grix_json_file: Path, logo: Path = None, final_max_scor
 
     elapsed_time = time.time() - start_time
     print(f"✅ {index} pdf exported in {elapsed_time:.2f} seconds")
+
+def escape_criterion_ids(scoresheet):
+    """Protège les underscores dans les IDs de critères pour le rendu LaTeX."""
+    for outcome in scoresheet.get("outcomes", {}).values():
+        for criterion in outcome.get("criteria", {}).values():
+            if "id" in criterion:
+                criterion["id"] = criterion["id"].replace("_", r"\_")
+
+    for section in scoresheet.get("sections", []):
+        for question in section.get("questions", []):
+            if "criterion" in question and "id" in question["criterion"]:
+                if isinstance(question["criterion"]["id"], str):
+                    question["criterion"]["id"] = question["criterion"]["id"].replace("_", r"\_")
+    return scoresheet
+
+def render_gradix_to_tex(grix_json_file: Path, template_file: Path, final_max_score: float = 20,clean_aux=True):
+    """
+    Génère des fichiers .tex compilables à partir d'un JSON Gradix et d'un template LaTeX.
+    """
+    # 1️⃣ Charger le JSON
+    with open(grix_json_file, 'r', encoding='utf-8') as f:
+        flat_data = json.load(f)
+
+    scoresheets_by_exam = extract_gradix(flat_data)
+
+##    # 2️⃣ Charger le template LaTeX (Jinja2)
+##    with open(template_file, 'r', encoding='utf-8') as f:
+##        template_str = f.read()
+##    template = Template(template_str)
+
+    # Load the Typst template
+    template_str = _load_template('feedback.tex')
+    template = Template(template_str)
+
+
+    # 3️⃣ Créer le répertoire principal
+    main_directory = "assignments"
+    os.makedirs(main_directory, exist_ok=True)
+
+    # 4️⃣ Générer un .tex par étudiant
+    index = 0
+    for exam_id, exam in scoresheets_by_exam.items():
+        for scoresheet in exam["scoresheets"]:
+            safe_scoresheet = escape_criterion_ids(scoresheet.copy())
+            student_name = f'{scoresheet["student"]["firstName"]}_{scoresheet["student"]["lastName"]}'
+            student_dir = os.path.join(main_directory, f'{student_name}_{scoresheet["student"]["id"]}')
+            os.makedirs(student_dir, exist_ok=True)
+
+            # Calcul du score final
+            final_score = scoresheet["score"] * final_max_score / scoresheet["maxScore"]
+
+            # Rendu du template LaTeX
+            latex_content = template.render(
+                **scoresheet,
+                exam_stats=exam["stats"],
+                final_score=final_score,
+                final_max_score=final_max_score
+            )
+
+            tex_file_path = os.path.join(student_dir, "scoresheet.tex")
+            with open(tex_file_path, 'w', encoding='utf-8') as f:
+                f.write(latex_content)
+            # Compiler avec pdflatex 
+            subprocess.run(['pdflatex', '-interaction=nonstopmode','-jobname=scoresheet', "scoresheet.tex"], cwd=student_dir)
+            #subprocess.run(['pdflatex', '-interaction=nonstopmode', "scoresheet.tex"], cwd=student_dir)
+            
+            index += 1
+            if clean_aux:
+                for ext in [".aux", ".log", ".out", ".toc",".tex",".synctex.gz",".dvi"]:
+                    f = Path(student_dir) / ("scoresheet" + ext)
+                    if f.exists():
+                        f.unlink()
+
+    print(f"✅ {index} .tex files generated in {main_directory}")

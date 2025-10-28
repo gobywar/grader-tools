@@ -88,7 +88,7 @@ def parse_latex_questions(tex_content: str):
     }
 
 
-def preprocess_yaml(data):
+def preprocess_yaml_back(data):
     """
     Normalize YAML rubric definition:
     - Preserve top-level metadata (course, semester, teachers, year)
@@ -161,6 +161,77 @@ def preprocess_yaml(data):
     # Rebuild normalized YAML with metadata + processed modules
     return {**metadata, "outcomes": processed_outcomes}
 
+def preprocess_yaml(data):
+    """
+    Normalise un fichier YAML de grille d'évaluation :
+    - Conserve les métadonnées (cours, année, enseignant, etc.)
+    - Donne des IDs cohérents aux outcomes et critères
+    - Conserve les niveaux du YAML dans l’ordre défini
+    - Attribue des couleurs progressives selon le poids
+    """
+
+    metadata = {
+        "course": data.get("course"),
+        "semester": data.get("semester"),
+        "teachers": data.get("teachers", []),
+        "year": data.get("year"),
+    }
+
+    def weight_to_color(weight):
+        """Détermine une couleur selon le poids"""
+        if weight >= 0.9:
+            return "#06D6A0"  # vert
+        elif weight >= 0.6:
+            return "#8ED081"  # vert clair
+        elif weight >= 0.4:
+            return "#FFD166"  # jaune
+        elif weight >= 0.2:
+            return "#FF9F1C"  # orange
+        else:
+            return "#FF6B6B"  # rouge
+
+    processed_outcomes = []
+
+    for outcome in data.get("outcomes", []):
+        outcome_id = (outcome.get("name", "")).lower().strip()
+        outcome["id"] = outcome_id
+
+        for criterion in outcome.get("criteria", []):
+            criterion_name = criterion.get("name", "").lower().strip()
+            criterion_id = f"{outcome_id}_{criterion_name}" if criterion_name else outcome_id
+            criterion["id"] = criterion_id
+
+            normalized_levels = []
+            for i, lvl in enumerate(criterion.get("levels", [])):
+                weight = float(lvl.get("weight", 0))
+                normalized_levels.append({
+                    "id": f"{criterion_id}_l{i}",
+                    "name": lvl.get("name", f"Level {i}"),
+                    "order": i,
+                    "weight": weight,
+                    "label": lvl.get("name", f"Level {i}"),
+                    "text": lvl.get("text", ""),
+                    "color": weight_to_color(weight),
+                    "critical": (weight == 0)
+                })
+
+            # Ajouter le niveau "Non traité"
+            normalized_levels.append({
+                "id": f"{criterion_id}_l_na",
+                "name": "l_na",
+                "order": -1,
+                "weight": 0,
+                "label": "Non traité",
+                "text": "Non traité",
+                "color": "#FFFFFF",
+                "critical": False
+            })
+
+            criterion["levels"] = normalized_levels
+
+        processed_outcomes.append(outcome)
+
+    return {**metadata, "outcomes": processed_outcomes}
 
 
 def yaml_grid_to_json(yaml_file, json_file):
@@ -251,6 +322,67 @@ def moodle_student_csv_to_json(csv_file: Path, json_file: Path = None):
 
     print(f"✅ Student CSV converted: {csv_file} → {json_file}")
     print(f"📊 Student parsed: {len(rows)} students")
+
+def moodle_student_csv_picture_to_json(csv_file: Path,json_file: Path = None,photos_file: Path = None):
+    """Convert CSV export of students into normalized JSON, optionally enriched with photos."""
+
+    FIELD_MAP = {
+        "\ufeffIdentifiant": "id",  # Handle BOM
+        "Identifiant": "id",
+        "Nom complet": "full_name",
+        "Adresse de courriel": "email",
+    }
+
+    if json_file is None:
+        json_file = csv_file.with_suffix(".json")
+
+    # --- Étape 1 : Lecture CSV Moodle ---
+    rows = []
+    with open(csv_file, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f, delimiter=",")
+        for row in reader:
+            translated = {
+                FIELD_MAP[k]: (v if v != "" else None)
+                for k, v in row.items()
+                if k in FIELD_MAP
+            }
+
+            firstName, lastName = split_full_name(translated.pop("full_name"))
+            clean_row = {
+                "id": int(translated["id"].replace("Participant", "")),
+                "email": translated["email"],
+                "firstName": firstName,
+                "lastName": lastName
+            }
+            rows.append(clean_row)
+
+    # --- Étape 2 : Enrichissement via JSON photos ---
+    with open(photos_file, "r", encoding="utf-8") as f:
+        photos_data = json.load(f)
+
+    for student in rows:
+        match = next(
+            (
+                p for p in photos_data.values()
+                if p["firstName"].strip().lower() == student["firstName"].strip().lower()
+                and p["lastName"].strip().lower() == student["lastName"].strip().lower()
+            ),
+            None
+        )
+        if match:
+            student["photo"] = match.get("photo")
+            student["group"] = match.get("group")
+        else:
+            print(f' Problème étudiant {student}')
+
+    # --- Étape 3 : Sauvegarde ---
+    with open(json_file, "w", encoding="utf-8") as f:
+        json.dump(rows, f, indent=2, ensure_ascii=False)
+
+    print(f"✅ Student CSV converted: {csv_file} → {json_file}")
+    print(f"📊 {len(rows)} students parsed")
+    if photos_file:
+        print(f"🖼️ Photos linked from: {photos_file}")
 
 
 def json_to_gradix(exam_json: Path, student_json: Path, grid_json: Path, output_json: Path):

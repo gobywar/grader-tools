@@ -18,12 +18,15 @@ def build_gradix_dict(data_exam: dict, student_list: list, data_grid: list) -> d
 
     # --- Students
     for student in student_list:
+        print(student['group'])
         sid = str(student["id"])
         students[sid] = {
             "id": sid,
             "firstName": student["firstName"],
             "lastName": student["lastName"],
             "email": student["email"],
+            "photo": student["photo"],
+            "group": student["group"],
         }
 
     # --- Sections + Questions

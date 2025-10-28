@@ -2,6 +2,7 @@ import typer
 from pathlib import Path
 import json
 import yaml
+from .render import render_grid_to_pdf, render_gradix_to_tex
 
 app = typer.Typer(help="Grader Tools - utilities for criteria grids and exams",pretty_exceptions_enable=False)
 
@@ -58,6 +59,15 @@ def moodle_student_csv_to_json(
     from .convert import moodle_student_csv_to_json
     moodle_student_csv_to_json(csv_file, json_file)
 
+@app.command()
+def moodle_student_csv_pictures_to_json(
+    csv_file: Path = typer.Argument(..., help="Input student CSV file"),
+    pictures_file: Path = typer.Argument(..., help="Input pictures JSON file"),
+    json_file: Path = typer.Option(None, "--output", "-o", help="Output JSON file"),
+):
+    """Convert CSV to JSON including pictures"""
+    from .convert import moodle_student_csv_picture_to_json
+    moodle_student_csv_picture_to_json(csv_file, json_file,pictures_file)
 
 @app.command()
 def json_to_gradix(
@@ -81,6 +91,14 @@ def gradix_to_pdf(
     from .render import render_gradix_to_pdf
     render_gradix_to_pdf(grid_json, logo_file, final_max_score)
 
-
-if __name__ == "__main__":
-    app()
+#Nouvelle commande pour PDF avec LaTeX
+@app.command()
+def gradix_to_pdf_via_latex(
+    json_file: str,
+    logo: str = typer.Option(None, "-l", "--logo", help="Chemin vers le logo"),
+    clean_aux: bool = typer.Option(True, "--clean-aux/--no-clean-aux", help="Clean auxiliary LaTeX files")
+):
+    """
+    Génère les PDFs des scoresheets en utilisant LaTeX.
+    """
+    render_gradix_to_tex(json_file, logo,clean_aux=clean_aux)
